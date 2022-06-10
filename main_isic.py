@@ -345,10 +345,10 @@ def test_isic(test_loader, model, num_para, args):
 def main(args):
     best_score = [0]
     start_epoch = args.start_epoch
-    print('loading the {0},{1},{2} dataset ...'.format('train', 'test', 'test'))
+    print('loading the {0},{1},{2} dataset ...'.format('train', 'val', 'test'))
     trainset = Test_Dataset[args.data](dataset_folder=args.root_path, folder=args.val_folder, train_type='train',
                                        transform=Test_Transform[args.transform])
-    validset = Test_Dataset[args.data](dataset_folder=args.root_path, folder=args.val_folder, train_type='test',
+    validset = Test_Dataset[args.data](dataset_folder=args.root_path, folder=args.val_folder, train_type='val',
                                        transform=Test_Transform[args.transform])
     testset = Test_Dataset[args.data](dataset_folder=args.root_path, folder=args.val_folder, train_type='test',
                                       transform=Test_Transform[args.transform])

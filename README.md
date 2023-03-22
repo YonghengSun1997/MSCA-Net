@@ -63,6 +63,15 @@ python main_train.py
 | MSCA-Net (Ours) |   27.09    |    12.88    | **84.18±0.38** | **90.52±0.26** | **96.41±0.29** |
 
 ### Reference
-
-
+If you find our work is helpful for your research, please consider to cite:
+```
+@article{sun2023msca,
+  title={MSCA-Net: Multi-scale contextual attention network for skin lesion segmentation},
+  author={Sun, Yongheng and Dai, Duwei and Zhang, Qianni and Wang, Yaqi and Xu, Songhua and Lian, Chunfeng},
+  journal={Pattern Recognition},
+  pages={109524},
+  year={2023},
+  publisher={Elsevier}
+}
+```
 

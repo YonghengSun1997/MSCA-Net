@@ -2175,3 +2175,119 @@ class msca_net(nn.Module):
         final = F.sigmoid(main_out)
 
         return final
+
+class msca_net_with_heatmap_output(nn.Module):
+    def __init__(self, classes=2, channels=3, ccm=True, norm_layer=nn.BatchNorm2d, is_training=True, expansion=2,
+                 base_channel=32):
+        super(msca_net, self).__init__()
+        self.backbone = models.resnet34(pretrained=True)
+        # self.backbone =resnet34(pretrained=False)
+        self.expansion = expansion
+        self.base_channel = base_channel
+        if self.expansion == 4 and self.base_channel == 64:
+            expan = [512, 1024, 2048]
+            spatial_ch = [128, 256]
+        elif self.expansion == 4 and self.base_channel == 32:
+            expan = [256, 512, 1024]
+            spatial_ch = [32, 128]
+            conv_channel_up = [256, 384, 512]
+        elif self.expansion == 2 and self.base_channel == 32:
+            expan = [128, 256, 512]
+            spatial_ch = [64, 64]
+            conv_channel_up = [128, 256, 512]
+
+        conv_channel = expan[0]
+
+        self.is_training = is_training
+        # self.sap = SAPblock(expan[-1])
+
+        # self.decoder5 = DecoderBlock(expan[-1], expan[-2], relu=False, last=True)  # 256
+        # self.decoder4 = DecoderBlock(expan[-2], expan[-3], relu=False)  # 128
+        # self.decoder3 = DecoderBlock(expan[-3], spatial_ch[-1], relu=False)  # 64
+        # self.decoder2 = DecoderBlock(spatial_ch[-1], spatial_ch[-2])  # 32
+
+        bilinear =True
+        factor = 2
+        self.up1 = Up(768, 512 // factor, bilinear)
+        self.up2 = Up(384, 256 // factor, bilinear)
+        self.up3 = Up(192, 64, bilinear)
+        self.up4 = Up(128, 64, bilinear)
+
+        self.main_head = BaseNetHead(64, classes, 2,
+                                     is_aux=False, norm_layer=norm_layer)
+
+        # self.relu = nn.ReLU()
+
+        # self.fpt = FPT(feature_dim=4)
+
+        filters = [64, 64, 128, 256]
+        self.out_size = (112, 160)
+        self.dsv4 = UnetDsv3(in_size=filters[3], out_size=64, scale_factor=self.out_size)
+        self.dsv3 = UnetDsv3(in_size=filters[2], out_size=64, scale_factor=self.out_size)
+        self.dsv2 = UnetDsv3(in_size=filters[1], out_size=64, scale_factor=self.out_size)
+        self.dsv1 = nn.Conv2d(in_channels=filters[0], out_channels=64, kernel_size=1)
+
+        self.sw1 = Scale_Aware(in_channels=64)
+        self.sw2 = Scale_Aware(in_channels=64)
+        self.sw3 = Scale_Aware(in_channels=64)
+
+        self.affinity_attention = AffinityAttention2(512)
+        self.cbam = CBAM_Module2()
+        self.gamma1 = nn.Parameter(torch.zeros(1))
+        self.gamma2 = nn.Parameter(torch.zeros(1))
+        self.gamma3 = nn.Parameter(torch.zeros(1))
+
+        self.bridge = Bridge(64, 128, 256, 64)
+    def forward(self, x):
+
+        x = self.backbone.conv1(x)
+        x = self.backbone.bn1(x)
+        c1 = self.backbone.relu(x)  # 1/2  64
+
+        x = self.backbone.maxpool(c1)
+        c2 = self.backbone.layer1(x)  # 1/4   64
+        c3 = self.backbone.layer2(c2)  # 1/8   128
+        c4 = self.backbone.layer3(c3)  # 1/16   256
+        c5 = self.backbone.layer4(c4)  # 1/32   512
+        # d_bottom=self.bottom(c5)
+
+        # m1, m2, m3, m4 = self.fpt(c1, c2, c3, c4)
+        m2, m3, m4 = self.bridge(c2, c3, c4)
+
+        # c5 = self.sap(c5)
+        attention = self.affinity_attention(c5)
+        cbam_attn = self.cbam(c5)
+        # l_channel, _ = self.l_channel(c5)
+        # l_spatial, _ = self.l_spatial(c5)
+        c5 = self.gamma1 * attention + self.gamma2 * cbam_attn + self.gamma3 * c5#多种并行方式， 用不用bn relu, 用不用scale aware
+
+        # d5=d_bottom+c5           #512
+
+        # d4 = self.relu(self.decoder5(c5) + m4)  # 256
+        # d3 = self.relu(self.decoder4(d4) + m3)  # 128
+        # d2 = self.relu(self.decoder3(d3) + m2)  # 64
+        # d1 = self.decoder2(d2) + m1  # 32
+        d4 = self.up1(c5, m4)
+        d3 = self.up2(d4, m3)
+        d2 = self.up3(d3, m2)
+        d1 = self.up4(d2, c1)
+
+        dsv4 = self.dsv4(d4)
+        dsv3 = self.dsv3(d3)
+        dsv2 = self.dsv2(d2)
+        dsv1 = self.dsv1(d1)
+
+        dsv43 = self.sw1(dsv4, dsv3)
+        dsv432 = self.sw2(dsv43, dsv2)
+        dsv4321 = self.sw3(dsv432, dsv1)
+
+        main_out = self.main_head(dsv4321)
+
+        final = F.sigmoid(main_out)
+
+        att_cacs_map = dsv4321.cpu().detach().numpy().astype(np.float) #Change to the features you want to visualize
+        att_cacs_map = np.mean(att_cacs_map, axis=1)
+        att_cacs_map = ndimage.interpolation.zoom(att_cacs_map, [1.0, 224 / att_cacs_map.shape[1],
+                                                              320 / att_cacs_map.shape[2]], order=1)   # [1, 1024, 224, 320]
+
+        return final, att_cacs_map

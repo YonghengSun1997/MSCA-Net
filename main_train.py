@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # these code is for ISIC 2018: Skin Lesion Analysis Towards Melanoma Segmentation
 # -*- coding: utf-8 -*-
-# @Author  : Duwei Dai
+
 import os
 import torch
 import math
@@ -22,7 +22,7 @@ from Models.denseaspp.models.DenseASPP_ddw import DenseASPP_121
 from Models.compare_networks.BCDU_Net import BCDU_net_D3
 from Models.compare_networks.CPFNet import CPF_Net
 from Models.compare_networks.CENet import CE_Net
-from Models.networks.msca_net import msca_net
+from Models.networks.msca_net import msca_net, msca_net_with_heatmap_output
 
 from utils.dice_loss import get_soft_label, val_dice_isic, SoftDiceLoss
 from utils.dice_loss import Intersection_over_Union_isic
@@ -450,7 +450,7 @@ if __name__ == '__main__':
     assert LooseVersion(torch.__version__) >= LooseVersion('0.4.0'), 'PyTorch>=0.4.0 is required'
     parser = argparse.ArgumentParser(description='Comprehensive attention network for biomedical Dataset')
     
-    parser.add_argument('--id', default="msca_net",
+    parser.add_argument('--id', default="msca_net_with_heatmap_output",
                         help='msca_net')                                                   # Select a loaded model name
 
     # Path related arguments

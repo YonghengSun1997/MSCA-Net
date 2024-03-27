@@ -11,7 +11,8 @@ import argparse
 import numpy as np
 import sys
 from tqdm import tqdm
-
+import cv2
+import PIL.Image as Image
 from distutils.version import LooseVersion
 from Datasets.ISIC2018 import ISIC2018_dataset
 from utils.transform import ISIC2018_transform, ISIC2018_transform_320, ISIC2018_transform_newdata
@@ -179,7 +180,9 @@ def test_isic(test_loader, model, num_para, args, test_acc_log):
     isic_Jaccard = []
     isic_dc = []
     infer_time = []
-    
+    img_saved_path = './figs'
+    if not os.path.exists(img_saved_path):
+        os.mkdir(img_saved_path)
     modelname = args.ckpt + '/' + 'best_score' + '_' + args.data + '_checkpoint.pth.tar'
     if os.path.isfile(modelname):
         print("=> Loading checkpoint '{}'".format(modelname))
@@ -206,10 +209,10 @@ def test_isic(test_loader, model, num_para, args, test_acc_log):
         current_att = cacs_map      #   选择当前所用的注意力模块
        # current_att = np.mean(current_att, axis=1)
 
-        npy_path = os.path.join('./b1/test', 'images', name[0])
-        img = cv2.imread(npy_path)
+        npy_path = os.path.join('./data', name[0])
+        img = np.load(npy_path)
         im = Image.fromarray(np.uint8(img))
-        im_path = name[0].split(".")[0] + "_img" + ".png"
+        im_path = name[0].split(".")[0][-12:] + "_img" + ".png"
         img_saved_dir = os.path.join(img_saved_path, name[0].split(".")[0], "cacs_map")  #  heatmap 保存的地址
         if not os.path.isdir(img_saved_dir):
             os.makedirs(img_saved_dir)
@@ -217,7 +220,7 @@ def test_isic(test_loader, model, num_para, args, test_acc_log):
         
         target_np = target.squeeze().cpu().numpy()
         label = Image.fromarray(np.uint8(target_np*255))
-        label_path = name[0].split(".")[0] + "_label" + ".png"
+        label_path = name[0].split(".")[0][-12:] + "_label" + ".png"
         label.save(os.path.join(img_saved_dir, label_path))
         
         # att = np.squeeze(current_att)[0]
@@ -227,7 +230,7 @@ def test_isic(test_loader, model, num_para, args, test_acc_log):
         att_new = norm_img
         att_new = att_new.astype(np.uint8)
         heat_img = heatmap_fuse(att_new)
-        heat_path = name[0].split(".")[0] + "_heat" + "_1.png"
+        heat_path = name[0].split(".")[0][-12:] + "_heat" + "_1.png"
         cv2.imwrite(os.path.join(img_saved_dir, heat_path), heat_img)
         
         att_0 = current_att[0]
@@ -236,7 +239,7 @@ def test_isic(test_loader, model, num_para, args, test_acc_log):
         att_new_0 = norm_img_0
         att_new_0 = att_new_0.astype(np.uint8)
         heat_img_0 = heatmap_fuse(att_new_0)
-        heat_path_0 = name[0].split(".")[0] + "_heat" + "_0.png"
+        heat_path_0 = name[0].split(".")[0][-12:] + "_heat" + "_0.png"
         cv2.imwrite(os.path.join(img_saved_dir, heat_path_0), heat_img_0)
         
         ########################   结束保存 #################################
@@ -359,9 +362,9 @@ def main(args, val_acc_log, test_acc_log):
     testset =  Test_Dataset[args.data](dataset_folder=args.root_path, folder=args.val_folder, train_type='test',
                                        with_name=True, transform=Test_Transform[args.transform])
 
-    trainloader = Data.DataLoader(dataset=trainset, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=6)
-    validloader = Data.DataLoader(dataset=validset, batch_size=1, shuffle=False, pin_memory=True, num_workers=6)
-    testloader = Data.DataLoader(dataset=testset, batch_size=1, shuffle=False, pin_memory=True, num_workers=6)
+    trainloader = Data.DataLoader(dataset=trainset, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=1)
+    validloader = Data.DataLoader(dataset=validset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
+    testloader = Data.DataLoader(dataset=testset, batch_size=1, shuffle=False, pin_memory=True, num_workers=1)
     print('Loading is done\n')
 
     args.num_input = 3
@@ -455,7 +458,7 @@ if __name__ == '__main__':
                         help='msca_net')                                                   # Select a loaded model name
 
     # Path related arguments
-    parser.add_argument('--root_path', default='/data/ISIC2018_npy_all_224_320',
+    parser.add_argument('--root_path', default='./data/ISIC2018_npy_all_224_320',
                         help='root directory of data')                                      # The folder where the numpy data set is stored
     parser.add_argument('--ckpt', default='./saved_models/',
                         help='folder to output checkpoints')                                # The folder in which the trained model is saved
@@ -463,15 +466,15 @@ if __name__ == '__main__':
                         help='which ISIC2018_transform to choose')                         
     parser.add_argument('--data', default='ISIC2018', help='choose the dataset')            
     parser.add_argument('--out_size', default=(224, 320), help='the output image size')
-    parser.add_argument('--val_folder', default='folder3', type=str,
+    parser.add_argument('--val_folder', default='folder_toy', type=str,
                         help='folder1、folder2、folder3、folder4、folder5')                 # five-fold cross-validation
 
     # optimization related arguments
-    parser.add_argument('--epochs', type=int, default=250, metavar='N',
+    parser.add_argument('--epochs', type=int, default=2, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--batch_size', type=int, default=10, metavar='N',              
+    parser.add_argument('--batch_size', type=int, default=2, metavar='N',
                         help='input batch size for training (default: 12)')                 # batch_size
     parser.add_argument('--lr_rate', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 0.001)')                              

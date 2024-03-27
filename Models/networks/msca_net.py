@@ -2179,7 +2179,7 @@ class msca_net(nn.Module):
 class msca_net_with_heatmap_output(nn.Module):
     def __init__(self, classes=2, channels=3, ccm=True, norm_layer=nn.BatchNorm2d, is_training=True, expansion=2,
                  base_channel=32):
-        super(msca_net, self).__init__()
+        super(msca_net_with_heatmap_output, self).__init__()
         self.backbone = models.resnet34(pretrained=True)
         # self.backbone =resnet34(pretrained=False)
         self.expansion = expansion

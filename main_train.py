@@ -194,51 +194,51 @@ def test_isic(test_loader, model, num_para, args, test_acc_log):
         target = lab.float().cuda() # [batch, 1, 224, 320]
         
         begin_time = time()
-        # output = model(image)
-        output, cacs_map = model(image)
+        output = model(image)
+        # output, cacs_map = model(image)
         end_time = time()
         pred_time = end_time - begin_time
         infer_time.append(pred_time)
 
-      ###################    开始保存图片   ###############################
+      # ###################    开始保存图片   ###############################
         
-        current_att = cacs_map      #   选择当前所用的注意力模块
-       # current_att = np.mean(current_att, axis=1)
+      #   current_att = cacs_map      #   选择当前所用的注意力模块
+      #  # current_att = np.mean(current_att, axis=1)
 
-        npy_path = os.path.join('./b1/test', 'images', name[0])
-        img = cv2.imread(npy_path)
-        im = Image.fromarray(np.uint8(img))
-        im_path = name[0].split(".")[0] + "_img" + ".png"
-        img_saved_dir = os.path.join(img_saved_path, name[0].split(".")[0], "cacs_map")  #  heatmap 保存的地址
-        if not os.path.isdir(img_saved_dir):
-            os.makedirs(img_saved_dir)
-        im.save(os.path.join(img_saved_dir, im_path))
+      #   npy_path = os.path.join('./b1/test', 'images', name[0])
+      #   img = cv2.imread(npy_path)
+      #   im = Image.fromarray(np.uint8(img))
+      #   im_path = name[0].split(".")[0] + "_img" + ".png"
+      #   img_saved_dir = os.path.join(img_saved_path, name[0].split(".")[0], "cacs_map")  #  heatmap 保存的地址
+      #   if not os.path.isdir(img_saved_dir):
+      #       os.makedirs(img_saved_dir)
+      # #   im.save(os.path.join(img_saved_dir, im_path))
         
-        target_np = target.squeeze().cpu().numpy()
-        label = Image.fromarray(np.uint8(target_np*255))
-        label_path = name[0].split(".")[0] + "_label" + ".png"
-        label.save(os.path.join(img_saved_dir, label_path))
+      #   target_np = target.squeeze().cpu().numpy()
+      #   label = Image.fromarray(np.uint8(target_np*255))
+      #   label_path = name[0].split(".")[0] + "_label" + ".png"
+      #   label.save(os.path.join(img_saved_dir, label_path))
         
-        # att = np.squeeze(current_att)[0]
-        att = 1- current_att[0]
-        # print(atten3_map1.shape)
-        norm_img = 255.0*(att-np.min(att))/(np.max(att)-np.min(att))
-        att_new = norm_img
-        att_new = att_new.astype(np.uint8)
-        heat_img = heatmap_fuse(att_new)
-        heat_path = name[0].split(".")[0] + "_heat" + "_1.png"
-        cv2.imwrite(os.path.join(img_saved_dir, heat_path), heat_img)
+      #   # att = np.squeeze(current_att)[0]
+      #   att = 1- current_att[0]
+      #   # print(atten3_map1.shape)
+      #   norm_img = 255.0*(att-np.min(att))/(np.max(att)-np.min(att))
+      #   att_new = norm_img
+      #   att_new = att_new.astype(np.uint8)
+      #   heat_img = heatmap_fuse(att_new)
+      #   heat_path = name[0].split(".")[0] + "_heat" + "_1.png"
+      #   cv2.imwrite(os.path.join(img_saved_dir, heat_path), heat_img)
         
-        att_0 = current_att[0]
-        # print(atten3_map1.shape)
-        norm_img_0 = 255.0*(att_0-np.min(att_0))/(np.max(att_0)-np.min(att_0))
-        att_new_0 = norm_img_0
-        att_new_0 = att_new_0.astype(np.uint8)
-        heat_img_0 = heatmap_fuse(att_new_0)
-        heat_path_0 = name[0].split(".")[0] + "_heat" + "_0.png"
-        cv2.imwrite(os.path.join(img_saved_dir, heat_path_0), heat_img_0)
+      #   att_0 = current_att[0]
+      #   # print(atten3_map1.shape)
+      #   norm_img_0 = 255.0*(att_0-np.min(att_0))/(np.max(att_0)-np.min(att_0))
+      #   att_new_0 = norm_img_0
+      #   att_new_0 = att_new_0.astype(np.uint8)
+      #   heat_img_0 = heatmap_fuse(att_new_0)
+      #   heat_path_0 = name[0].split(".")[0] + "_heat" + "_0.png"
+      #   cv2.imwrite(os.path.join(img_saved_dir, heat_path_0), heat_img_0)
         
-        ########################   结束保存 #################################
+      #   ########################   结束保存 #################################
         
         output_dis = torch.max(output, 1)[1].unsqueeze(dim=1)
         output_dis_test = output_dis.permute(0, 2, 3, 1).float()

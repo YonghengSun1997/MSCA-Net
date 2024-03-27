@@ -41,6 +41,7 @@ Test_Model = {
               "CPF_Net": CPF_Net,
               "CE_Net": CE_Net,
               "msca_net":msca_net,
+  "msca_net_with_heatmap_output":msca_net_with_heatmap_output
              }
              
              
